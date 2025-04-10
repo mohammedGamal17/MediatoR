@@ -42,3 +42,7 @@ public interface INotificationHandler<TNotification>
 {
     Task Handle(TNotification notification, CancellationToken cancellationToken);
 }
+```
+---
+### DOCS
+- For advanced usage, see the [docs](docs/USAGE.md).
