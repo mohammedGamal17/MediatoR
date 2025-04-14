@@ -92,5 +92,5 @@ await _moMediatoR.Publish(new UserCreatedNotification());
 - 🚀 Register MediatR in your DI container:
 ```csharp
 using MoMediatoR;
-ervices.AddCustomMediator(typeof(Program).Assembly);
+Services.AddMoMediatoR(typeof(Program).Assembly);
 ```
