@@ -45,4 +45,52 @@ public interface INotificationHandler<TNotification>
 ```
 ---
 ### DOCS
-- For advanced usage, see the [docs](docs/USAGE.md).
+#### ⚙️ Usage
+
+##### Example Request & Handler
+
+```csharp
+using MoMediatoR;
+public class GetUserQuery : IRequest<UserDto> { }
+
+public class GetUserHandler : IRequestHandler<GetUserQuery, UserDto>
+{
+    public Task<UserDto> Handle(GetUserQuery request, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(new UserDto { Name = "John Doe" });
+    }
+}
+```
+---
+##### Example Notification & Handler
+
+```csharp
+using MoMediatoR;
+
+public class UserCreatedNotification : INotification { }
+
+public class UserCreatedHandler : INotificationHandler<UserCreatedNotification>
+{
+    public Task Handle(UserCreatedNotification notification, CancellationToken cancellationToken)
+    {
+        Console.WriteLine("User created event handled.");
+        return Task.CompletedTask;
+    }
+}
+```
+---
+##### Example Mediator Usage
+
+```csharp
+using MoMediatoR;
+
+var result = await mediator.Send(new GetUserQuery());
+await mediator.Publish(new UserCreatedNotification());
+```
+---
+##### Configuration
+- 🚀 Register MediatR in your DI container:
+```csharp
+using MoMediatoR;
+ervices.AddCustomMediator(typeof(Program).Assembly);
+```
