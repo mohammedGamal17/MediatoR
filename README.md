@@ -44,10 +44,10 @@ public interface INotificationHandler<TNotification>
 }
 ```
 ---
-### DOCS
-#### ⚙️ Usage
+## DOCS
+### ⚙️ Usage
 
-##### Example Request & Handler
+#### Example Request & Handler
 
 ```csharp
 using MoMediatoR;
@@ -62,7 +62,7 @@ public class GetUserHandler : IRequestHandler<GetUserQuery, UserDto>
 }
 ```
 ---
-##### Example Notification & Handler
+#### Example Notification & Handler
 
 ```csharp
 using MoMediatoR;
@@ -79,7 +79,7 @@ public class UserCreatedHandler : INotificationHandler<UserCreatedNotification>
 }
 ```
 ---
-##### Example Mediator Usage
+#### Example Mediator Usage
 
 ```csharp
 using MoMediatoR;
@@ -89,7 +89,7 @@ var result = await _moMediatoR.Send(new GetUserQuery());
 await _moMediatoR.Publish(new UserCreatedNotification());
 ```
 ---
-##### Configuration
+#### Configuration
 - 🚀 Register MediatR in your DI container:
 ```csharp
 using MoMediatoR;
