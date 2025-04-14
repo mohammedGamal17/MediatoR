@@ -4,7 +4,7 @@
     /// Defines the contract for a mediator that facilitates communication between different components 
     /// in a system by sending requests and publishing notifications.
     /// </summary>
-    public interface IMediator
+    public interface IMoMediatoR
     {
         /// <summary>
         /// Sends a request to the appropriate handler and expects a response of type <typeparamref name="TResponse"/>.

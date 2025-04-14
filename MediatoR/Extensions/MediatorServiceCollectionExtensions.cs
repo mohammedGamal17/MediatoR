@@ -15,7 +15,7 @@ namespace MoMediatoR
         /// <param name="services">The IServiceCollection to register services into.</param>
         /// <param name="assembly">The assembly to scan for request and notification handlers.</param>
         /// <returns>The updated IServiceCollection.</returns>
-        public static IServiceCollection AddCustomMediator(this IServiceCollection services, Assembly assembly)
+        public static IServiceCollection AddMoMediatoR(this IServiceCollection services, Assembly assembly)
         {
             // Register all request handlers
             var requestHandlerTypes = assembly.GetTypes()
@@ -56,7 +56,7 @@ namespace MoMediatoR
             }
 
             // Register the Mediator itself
-            services.AddTransient<IMediator, Mediator>();
+            services.AddTransient<IMoMediatoR, MoMediatoR>();
 
             return services;
         }

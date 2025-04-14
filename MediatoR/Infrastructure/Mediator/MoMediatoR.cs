@@ -3,10 +3,10 @@
 namespace MoMediatoR
 {
     /// <summary>
-    /// Represents a custom implementation of the <see cref="IMediator"/> interface,
+    /// Represents a custom implementation of the <see cref="IMoMediatoR"/> interface,
     /// facilitating the sending of requests and publishing of notifications.
     /// </summary>
-    public class Mediator : IMediator
+    public class MoMediatoR : IMoMediatoR
     {
         #region Fields
         private readonly IServiceProvider _serviceProvider;
@@ -17,7 +17,7 @@ namespace MoMediatoR
         /// Initializes a new instance of the <see cref="Mediator"/> class.
         /// </summary>
         /// <param name="serviceProvider">The service provider used to resolve request and notification handlers.</param>
-        public Mediator(IServiceProvider serviceProvider)
+        public MoMediatoR(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
         }
