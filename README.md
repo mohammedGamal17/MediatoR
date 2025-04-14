@@ -5,9 +5,12 @@ This project provides a clean, extensible implementation of the **Mediator patte
 ---
 
 ## ⬇️ Download
-- .NET CLI: dotnet add package MoMediator --version 1.0.5
-- Package Manager: NuGet\Install-Package MoMediator -Version 1.0.5
-- Package Reference: <PackageReference Include="MoMediator" Version="1.0.5" />
+
+- .NET CLI: ```dotnet add package MoMediator --version 1.0.5```
+- Package Manager: ```NuGet\Install-Package MoMediator -Version 1.0.5```
+- Package Reference: ```<PackageReference Include="MoMediator" Version="1.0.5" />```
+  
+---
 
 ## ✨ Features
 
