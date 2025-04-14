@@ -12,7 +12,7 @@
     <PackageIcon>66007646.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/mohammedGamal17/MediatoR</RepositoryUrl>
-    <Version>1.0.2</Version>
+    <Version>1.0.5</Version>
   </PropertyGroup>
 
   <ItemGroup>
