@@ -1,9 +1,7 @@
 ﻿using System.Reflection;
-using MediatoR.Core.Interfaces;
-using MediatoR.Infrastructure.Mediator;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MediatoR.Extensions
+namespace MoMediatoR
 {
     /// <summary>
     /// Extension methods for registering Mediator-related services in an IServiceCollection.

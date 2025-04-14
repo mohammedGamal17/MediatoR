@@ -1,4 +1,4 @@
-﻿namespace MediatoR.Core.Interfaces
+﻿namespace MoMediatoR
 {
     #region Contracts
     /// <summary>

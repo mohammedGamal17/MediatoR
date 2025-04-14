@@ -4,10 +4,29 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>Mo.Custome.Mediator</PackageId>
+    <Title>Mo.Custome.Mediator</Title>
+    <Authors>Mohammed Gamal Mahmoud</Authors>
+    <Product>MoCustomMediatoR</Product>
+    <Description>Custom MediatoR handle IRquest and INotification</Description>
+    <PackageIcon>66007646.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/mohammedGamal17/MediatoR</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Core\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\66007646.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

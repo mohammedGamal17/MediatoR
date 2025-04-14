@@ -1,4 +1,4 @@
-﻿namespace MediatoR.Core.Interfaces
+﻿namespace MoMediatoR
 {
     /// <summary>
     /// Defines the contract for a mediator that facilitates communication between different components 

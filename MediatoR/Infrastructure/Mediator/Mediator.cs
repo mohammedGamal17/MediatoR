@@ -1,7 +1,6 @@
-﻿using MediatoR.Core.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace MediatoR.Infrastructure.Mediator
+namespace MoMediatoR
 {
     /// <summary>
     /// Represents a custom implementation of the <see cref="IMediator"/> interface,
