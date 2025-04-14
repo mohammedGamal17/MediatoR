@@ -1,6 +1,6 @@
-# Custom Mediator Implementation (C#)
+# Mo Mediator Implementation (C#)
 
-This project provides a clean, extensible implementation of the **Mediator pattern** in C#, inspired by `MediatR` but built from scratch for learning, customization, or lightweight usage.
+This project provides a clean, extensible implementation of the **Mediator pattern** in C#,customization, or lightweight usage.
 
 ---
 
@@ -83,9 +83,10 @@ public class UserCreatedHandler : INotificationHandler<UserCreatedNotification>
 
 ```csharp
 using MoMediatoR;
+private readonly IMoMediatoR _moMediatoR;
 
-var result = await mediator.Send(new GetUserQuery());
-await mediator.Publish(new UserCreatedNotification());
+var result = await _moMediatoR.Send(new GetUserQuery());
+await _moMediatoR.Publish(new UserCreatedNotification());
 ```
 ---
 ##### Configuration
