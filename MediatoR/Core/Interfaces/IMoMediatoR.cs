@@ -12,14 +12,14 @@
         /// <typeparam name="TResponse">The type of the expected response.</typeparam>
         /// <param name="request">The request to be sent.</param>
         /// <returns>The response of type <typeparamref name="TResponse"/>.</returns>
-        Task<TResponse> Send<TResponse>(IRequest<TResponse> request);
+        Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Publishes a notification to all registered handlers of type <typeparamref name="TNotification"/>.
         /// </summary>
         /// <typeparam name="TNotification">The type of the notification to be published.</typeparam>
         /// <param name="notification">The notification to be published.</param>
-        Task Publish<TNotification>(TNotification notification) where TNotification : INotification;
+        Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification;
     }
 
 }
