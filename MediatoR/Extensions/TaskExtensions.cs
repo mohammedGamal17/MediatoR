@@ -15,7 +15,10 @@
         /// containing the result of the input task as an object.</returns>
         public static async Task<object> ConvertTaskResult<T>(Task<T> task)
         {
-            return await task.ConfigureAwait(false);
+            if (task == null)
+                throw new ArgumentNullException(nameof(task));
+
+            return await task.ConfigureAwait(false) ?? throw new ArgumentNullException(nameof(task));
         }
     }
 }

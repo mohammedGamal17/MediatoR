@@ -94,8 +94,7 @@
                     }
                     catch (Exception ex)
                     {
-                        // Log or handle individual handler errors if needed
-                        Console.WriteLine($"Notification handler {handlerType.Name} failed: {ex.Message}");
+                        throw new ApplicationException($"Failed to execute Notification handler for {handlerType.Name}", ex);
                     }
                 }
             }

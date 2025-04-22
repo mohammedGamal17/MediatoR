@@ -27,13 +27,13 @@
             if (assemblies == null || assemblies.Length == 0)
                 assemblies = new[] { Assembly.GetCallingAssembly() };
 
-            // Register MoMediatoR with prebuilt caches
             services.AddSingleton<IMoMediatoR>(sp => new MoMediatoR(sp, _compiledHandlerDelegates, _compiledNotificationDelegates, _handlerTypeRegistry));
 
             foreach (var assembly in assemblies)
             {
                 var types = _handlerTypesCache.GetOrAdd(assembly, a => a.GetTypes());
 
+                // Request Handlers
                 var requestHandlers = types.Where(t => t.GetInterfaces()
                     .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequestHandler<,>)));
 
@@ -43,11 +43,15 @@
                     var requestType = interfaceType.GetGenericArguments()[0];
                     var responseType = interfaceType.GetGenericArguments()[1];
 
-                    _handlerTypeRegistry[requestType] = handler;
-                    _compiledHandlerDelegates[requestType] = CompileRequestHandler(handler, requestType, responseType);
-                    services.AddTransient(handler); // DI
+                    _handlerTypeRegistry.TryAdd(requestType, handler);
+
+                    _compiledHandlerDelegates.GetOrAdd(requestType,
+                        _ => CompileRequestHandler(handler, requestType, responseType));
+
+                    services.AddTransient(handler);
                 }
 
+                // Notification Handlers
                 var notificationHandlers = types.Where(t => t.GetInterfaces()
                     .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(INotificationHandler<>)));
 
@@ -55,15 +59,19 @@
                 {
                     var interfaceType = handler.GetInterfaces().First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(INotificationHandler<>));
                     var notificationType = interfaceType.GetGenericArguments()[0];
+                    var compiledDelegate = CompileNotificationHandler(handler, notificationType);
 
-                    if (!_compiledNotificationDelegates.TryGetValue(notificationType, out var list))
-                    {
-                        list = new List<Func<object, INotification, CancellationToken, Task>>();
-                        _compiledNotificationDelegates[notificationType] = list;
-                    }
+                    _compiledNotificationDelegates.AddOrUpdate(
+                        notificationType,
+                        _ => new List<Func<object, INotification, CancellationToken, Task>> { compiledDelegate },
+                        (_, existingList) =>
+                        {
+                            // Copy-on-write to avoid mutation race condition
+                            var updatedList = new List<Func<object, INotification, CancellationToken, Task>>(existingList) { compiledDelegate };
+                            return updatedList;
+                        });
 
-                    list.Add(CompileNotificationHandler(handler, notificationType));
-                    services.AddTransient(handler); // DI
+                    services.AddTransient(handler);
                 }
             }
 
@@ -98,6 +106,8 @@
         {
             // method info
             var method = typeof(IRequestHandler<,>).MakeGenericType(requestType, responseType).GetMethod("Handle");
+            if (method == null)
+                throw new InvalidOperationException("Could not find ConvertTaskResult<T> method.");
 
             // parameters: (object handler, object request)
             var handler = Expression.Parameter(typeof(object), "handler");
@@ -141,8 +151,10 @@
         /// <returns>A compiled delegate that can be used to invoke the notification handler.</returns>
         private static Func<object, INotification, CancellationToken, Task> CompileNotificationHandler(Type handlerType, Type notificationType)
         {
-            var method = typeof(INotificationHandler<>).MakeGenericType(notificationType).GetMethod("Handle");
-
+            var method = typeof(INotificationHandler<>).MakeGenericType(notificationType).GetMethod("Handle");    
+            if (method == null) 
+                throw new InvalidOperationException("Could not find ConvertTaskResult<T> method.");
+            
             var handler = Expression.Parameter(typeof(object), "handler");
             var notification = Expression.Parameter(typeof(INotification), "notification");
             var cancellationToken = Expression.Parameter(typeof(CancellationToken), "ct");
