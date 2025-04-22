@@ -1,5 +1,4 @@
-# ✨ Mo Mediator Implementation (C#) — v2.0.2
-=======
+# ✨ MoMediator Implementation (C#) — v2.0.2
 
 This project provides a fast, extensible implementation of the Mediator pattern in C#, with a focus on performance, lightweight usage, and developer ergonomics.
 
