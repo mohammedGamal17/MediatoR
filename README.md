@@ -14,13 +14,12 @@ This project provides a fast, extensible implementation of the Mediator pattern 
 ---
 
 ## 🚀 What's New in 2.0.2
-=======
-    - 🔥 **Performance Improvements**: Major optimizations for speed and efficiency.
-    - ⚡ Compiled delegate caching for faster execution (no reflection in hot paths)
-    - 🧠 Internal caching of handler types and method delegates
-    - 🔧 Cleaner DI registration with overloads for assemblies and marker types
-    - 🧼 Less boilerplate for registering handlers
-    - ✅ Improved handler invocation using expression trees
+- 🔥 **Performance Improvements**: Major optimizations for speed and efficiency.
+- ⚡ Compiled delegate caching for faster execution (no reflection in hot paths)
+- 🧠 Internal caching of handler types and method delegates
+- 🔧 Cleaner DI registration with overloads for assemblies and marker types
+- 🧼 Less boilerplate for registering handlers
+- ✅ Improved handler invocation using expression trees
 
 ## ✨ Features
 
