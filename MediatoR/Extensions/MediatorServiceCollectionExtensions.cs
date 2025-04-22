@@ -8,7 +8,7 @@
         #region Fields
         private static readonly ConcurrentDictionary<Assembly, Type[]> _handlerTypesCache = new();
         private static readonly ConcurrentDictionary<Type, Func<object, object, Task<object>>> _compiledHandlerDelegates = new();
-        private static readonly ConcurrentDictionary<Type, List<Func<object, INotification, CancellationToken, Task>>> _compiledNotificationDelegates = new();
+        private static readonly ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task> Delegate)>> _compiledNotificationDelegates = new();
         private static readonly ConcurrentDictionary<Type, Type> _handlerTypeRegistry = new();
         #endregion
 
@@ -63,13 +63,16 @@
 
                     _compiledNotificationDelegates.AddOrUpdate(
                         notificationType,
-                        _ => new List<Func<object, INotification, CancellationToken, Task>> { compiledDelegate },
+                        _ => new List<(Type, Func<object, INotification, CancellationToken, Task>)> { (handler, compiledDelegate) },
                         (_, existingList) =>
                         {
-                            // Copy-on-write to avoid mutation race condition
-                            var updatedList = new List<Func<object, INotification, CancellationToken, Task>>(existingList) { compiledDelegate };
+                            var updatedList = new List<(Type, Func<object, INotification, CancellationToken, Task>)>(existingList)
+                            {
+            (handler, compiledDelegate)
+                            };
                             return updatedList;
                         });
+
 
                     services.AddTransient(handler);
                 }
@@ -104,10 +107,8 @@
         /// <returns>A compiled delegate that can be used to invoke the request handler.</returns>
         private static Func<object, object, Task<object>> CompileRequestHandler(Type handlerType, Type requestType, Type responseType)
         {
-            // method info
-            var method = typeof(IRequestHandler<,>).MakeGenericType(requestType, responseType).GetMethod("Handle");
-            if (method == null)
-                throw new InvalidOperationException("Could not find ConvertTaskResult<T> method.");
+            var method = typeof(IRequestHandler<,>).MakeGenericType(requestType, responseType).GetMethod("Handle")
+             ?? throw new InvalidOperationException("Could not find Handle method.");
 
             // parameters: (object handler, object request)
             var handler = Expression.Parameter(typeof(object), "handler");
@@ -121,7 +122,7 @@
             var cancellation = Expression.Constant(CancellationToken.None);
 
             // call Handle method
-            var call = Expression.Call(castHandler, method!, castRequest, cancellation);
+            var call = Expression.Call(castHandler, method, castRequest, cancellation);
 
             // convert Task<T> to Task<object> using helper
             var convertCall = Expression.Call(
@@ -151,10 +152,9 @@
         /// <returns>A compiled delegate that can be used to invoke the notification handler.</returns>
         private static Func<object, INotification, CancellationToken, Task> CompileNotificationHandler(Type handlerType, Type notificationType)
         {
-            var method = typeof(INotificationHandler<>).MakeGenericType(notificationType).GetMethod("Handle");    
-            if (method == null) 
-                throw new InvalidOperationException("Could not find ConvertTaskResult<T> method.");
-            
+            var method = typeof(INotificationHandler<>).MakeGenericType(notificationType).GetMethod("Handle")
+                                     ?? throw new InvalidOperationException("Could not find Handle method.");
+
             var handler = Expression.Parameter(typeof(object), "handler");
             var notification = Expression.Parameter(typeof(INotification), "notification");
             var cancellationToken = Expression.Parameter(typeof(CancellationToken), "ct");

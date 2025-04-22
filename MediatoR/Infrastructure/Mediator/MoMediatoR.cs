@@ -11,7 +11,7 @@
 
         // Primary cache for compiled delegates
         private readonly ConcurrentDictionary<Type, Func<object, object, Task<object>>> _handlerInvokers;
-        private readonly ConcurrentDictionary<Type, List<Func<object, INotification, CancellationToken, Task>>> _notificationInvokers;
+        private readonly ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task> Delegate)>> _notificationInvokers;
         private readonly ConcurrentDictionary<Type, Type> _handlerTypes;
 
         #endregion
@@ -27,7 +27,7 @@
         public MoMediatoR(
             IServiceProvider serviceProvider,
             ConcurrentDictionary<Type, Func<object, object, Task<object>>> handlerInvokers,
-            ConcurrentDictionary<Type, List<Func<object, INotification, CancellationToken, Task>>> notificationInvokers,
+            ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task> Delegate)>> notificationInvokers,
             ConcurrentDictionary<Type, Type> handlerTypes)
         {
             _serviceProvider = serviceProvider;
@@ -81,11 +81,10 @@
         {
             var notificationType = notification.GetType();
 
-            if (_notificationInvokers.TryGetValue(notificationType, out var handlerDelegates))
+            if (_notificationInvokers.TryGetValue(notificationType, out var handlerEntries))
             {
-                foreach (var handlerDelegate in handlerDelegates)
+                foreach (var (handlerType, handlerDelegate) in handlerEntries)
                 {
-                    var handlerType = handlerDelegate.Method.DeclaringType!;
                     var handlerInstance = _serviceProvider.GetRequiredService(handlerType);
 
                     try
@@ -98,6 +97,7 @@
                     }
                 }
             }
+
         }
         #endregion
 
