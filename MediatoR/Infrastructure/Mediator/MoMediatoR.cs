@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
-namespace MoMediatoR
+﻿namespace MoMediatoR
 {
     /// <summary>
     /// Represents a custom implementation of the <see cref="IMoMediatoR"/> interface,
@@ -10,48 +8,66 @@ namespace MoMediatoR
     {
         #region Fields
         private readonly IServiceProvider _serviceProvider;
+
+        // Primary cache for compiled delegates
+        private readonly ConcurrentDictionary<Type, Func<object, object, Task<object>>> _handlerInvokers;
+        private readonly ConcurrentDictionary<Type, List<Func<object, INotification, CancellationToken, Task>>> _notificationInvokers;
+        private readonly ConcurrentDictionary<Type, Type> _handlerTypes;
+
         #endregion
 
         #region Constructors
         /// <summary>
-        /// Initializes a new instance of the <see cref="Mediator"/> class.
+        /// Initializes a new instance of the <see cref="MoMediatoR"/> class.
         /// </summary>
         /// <param name="serviceProvider">The service provider used to resolve request and notification handlers.</param>
-        public MoMediatoR(IServiceProvider serviceProvider)
+        /// <param name="handlerInvokers">A dictionary that caches compiled delegates for handling requests.</param>
+        /// <param name="notificationInvokers">A dictionary that caches delegates for handling notifications.</param>
+        /// <param name="handlerTypes">A dictionary that maps request types to their corresponding handler types.</param>
+        public MoMediatoR(
+            IServiceProvider serviceProvider,
+            ConcurrentDictionary<Type, Func<object, object, Task<object>>> handlerInvokers,
+            ConcurrentDictionary<Type, List<Func<object, INotification, CancellationToken, Task>>> notificationInvokers,
+            ConcurrentDictionary<Type, Type> handlerTypes)
         {
             _serviceProvider = serviceProvider;
+            _handlerInvokers = handlerInvokers;
+            _notificationInvokers = notificationInvokers;
+            _handlerTypes = handlerTypes;
         }
         #endregion
 
         #region Methods
+
+        #region Public
         /// <summary>
         /// Sends a request of type <typeparamref name="TResponse"/> and returns the response asynchronously.
         /// </summary>
         /// <typeparam name="TResponse">The type of the response expected from handling the request.</typeparam>
         /// <param name="request">The request to be handled.</param>
+        /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
         /// <returns>A task representing the asynchronous operation, with the response of type <typeparamref name="TResponse"/>.</returns>
-        public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request)
+        public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(request);
+            var requestType = request.GetType();
 
-            var handlerType = typeof(IRequestHandler<,>).MakeGenericType(request.GetType(), typeof(TResponse));
-            var handler = _serviceProvider.GetService(handlerType);
+            if (!_handlerInvokers.TryGetValue(requestType, out var invoker))
+                throw new InvalidOperationException($"No handler registered for request type {requestType.FullName}");
 
-            if (handler is null)
-                throw new InvalidOperationException($"No handler registered for request type '{request.GetType().Name}'");
+            if (!_handlerTypes.TryGetValue(requestType, out var handlerType))
+                throw new InvalidOperationException($"No handler implementation found for {requestType.FullName}");
 
+            var handlerInstance = _serviceProvider.GetRequiredService(handlerType);
 
-            var handleMethod = handlerType.GetMethod("Handle");
-            if (handleMethod is null)
-                throw new InvalidOperationException($"Handler '{handler.GetType().Name}' does not contain a 'Handle' method.");
-
-
-            var result = handleMethod.Invoke(handler, new object[] { request, CancellationToken.None });
-            if (result is not Task<TResponse> task)
-                throw new InvalidOperationException($"Expected return type 'Task<{typeof(TResponse).Name}>' but got '{result?.GetType().Name ?? "null"}'.");
-
-
-            return await task;
+            try
+            {
+                var result = await invoker(handlerInstance, request);
+                return (TResponse)result!;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException($"Failed to execute request handler for {requestType.Name}", ex);
+            }
         }
 
         /// <summary>
@@ -59,28 +75,36 @@ namespace MoMediatoR
         /// </summary>
         /// <typeparam name="TNotification">The type of the notification to be published.</typeparam>
         /// <param name="notification">The notification to be handled by the registered handlers.</param>
+        /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task Publish<TNotification>(TNotification notification) where TNotification : INotification
+        public async Task Publish<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification
         {
-            var handlerType = typeof(INotificationHandler<>).MakeGenericType(typeof(TNotification));
-            var handlers = (IEnumerable<object>)_serviceProvider.GetServices(handlerType) ?? Enumerable.Empty<object>();
+            var notificationType = notification.GetType();
 
-            foreach (var handler in handlers)
+            if (_notificationInvokers.TryGetValue(notificationType, out var handlerDelegates))
             {
-                var method = handler.GetType().GetMethod("Handle");
-                if (method is null)
-                    throw new InvalidOperationException($"Handle method not found in {handler.GetType().Name}");
+                foreach (var handlerDelegate in handlerDelegates)
+                {
+                    var handlerType = handlerDelegate.Method.DeclaringType!;
+                    var handlerInstance = _serviceProvider.GetRequiredService(handlerType);
 
-                var result = method.Invoke(handler, new object[] { notification, CancellationToken.None });
-
-                if (result is not Task task)
-                    throw new InvalidOperationException($"Handler method for {typeof(TNotification).Name} did not return a Task.");
-
-                await task;
+                    try
+                    {
+                        await handlerDelegate(handlerInstance, notification, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new ApplicationException($"Failed to execute Notification handler for {handlerType.Name}", ex);
+                    }
+                }
             }
         }
         #endregion
 
-    }
+        #region Private
 
+        #endregion
+
+        #endregion
+    }
 }
