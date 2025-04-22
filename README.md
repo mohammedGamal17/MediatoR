@@ -1,4 +1,4 @@
-# ✨ Mo Mediator Implementation (C#) — v2.0.0
+# ✨ Mo Mediator Implementation (C#) — v2.0.1
 
 This project provides a fast, extensible implementation of the Mediator pattern in C#, with a focus on performance, lightweight usage, and developer ergonomics.
 
@@ -12,7 +12,7 @@ This project provides a fast, extensible implementation of the Mediator pattern 
   
 ---
 
-## 🚀 What's New in 2.0.0
+## 🚀 What's New in 2.0.1
     - 🔥 **Performance Improvements**: Major optimizations for speed and efficiency.
     - ⚡ Compiled delegate caching for faster execution (no reflection in hot paths)
     - 🧠 Internal caching of handler types and method delegates
