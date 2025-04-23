@@ -1,4 +1,4 @@
-# ✨ MoMediator Implementation (C#) — v2.0.2
+# ✨ MoMediator Implementation (C#) — v2.0.3
 
 This project provides a fast, extensible implementation of the Mediator pattern in C#, with a focus on performance, lightweight usage, and developer ergonomics.
 
@@ -6,13 +6,13 @@ This project provides a fast, extensible implementation of the Mediator pattern 
 
 ## ⬇️ Download
 
-- .NET CLI: ```dotnet add package MoMediator --version 2.0.2```
-- Package Manager: ```NuGet\Install-Package MoMediator -Version 2.0.2```
-- Package Reference: ```<PackageReference Include="MoMediator" Version="2.0.2" />```
+- .NET CLI: ```dotnet add package MoMediator --version 2.0.3```
+- Package Manager: ```NuGet\Install-Package MoMediator -Version 2.0.3```
+- Package Reference: ```<PackageReference Include="MoMediator" Version="2.0.3" />```
   
 ---
 
-## 🚀 What's New in 2.0.2
+## 🚀 What's New in 2.0.3
 - 🔥 **Performance Improvements**: Major optimizations for speed and efficiency.
 - ⚡ Compiled delegate caching for faster execution (no reflection in hot paths)
 - 🧠 Internal caching of handler types and method delegates

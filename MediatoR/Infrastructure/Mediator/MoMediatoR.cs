@@ -8,6 +8,7 @@
     {
         #region Fields
         private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         // Primary cache for compiled delegates
         private readonly ConcurrentDictionary<Type, Func<object, object, Task<object>>> _handlerInvokers;
@@ -28,12 +29,14 @@
             IServiceProvider serviceProvider,
             ConcurrentDictionary<Type, Func<object, object, Task<object>>> handlerInvokers,
             ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task> Delegate)>> notificationInvokers,
-            ConcurrentDictionary<Type, Type> handlerTypes)
+            ConcurrentDictionary<Type, Type> handlerTypes,
+            IServiceScopeFactory scopeFactory)
         {
             _serviceProvider = serviceProvider;
             _handlerInvokers = handlerInvokers;
             _notificationInvokers = notificationInvokers;
             _handlerTypes = handlerTypes;
+            _scopeFactory = scopeFactory;
         }
         #endregion
 
@@ -57,11 +60,12 @@
             if (!_handlerTypes.TryGetValue(requestType, out var handlerType))
                 throw new InvalidOperationException($"No handler implementation found for {requestType.FullName}");
 
-            var handlerInstance = _serviceProvider.GetRequiredService(handlerType);
+            using var scope = _scopeFactory.CreateScope();
+            var scopedHandler = scope.ServiceProvider.GetRequiredService(handlerType);
 
             try
             {
-                var result = await invoker(handlerInstance, request);
+                var result = await invoker(scopedHandler, request);
                 return (TResponse)result!;
             }
             catch (Exception ex)
@@ -83,9 +87,11 @@
 
             if (_notificationInvokers.TryGetValue(notificationType, out var handlerEntries))
             {
+                using var scope = _scopeFactory.CreateScope();
+
                 foreach (var (handlerType, handlerDelegate) in handlerEntries)
                 {
-                    var handlerInstance = _serviceProvider.GetRequiredService(handlerType);
+                    var handlerInstance = scope.ServiceProvider.GetRequiredService(handlerType);
 
                     try
                     {

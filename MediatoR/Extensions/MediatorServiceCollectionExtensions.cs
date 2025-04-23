@@ -26,8 +26,11 @@
         {
             if (assemblies == null || assemblies.Length == 0)
                 assemblies = new[] { Assembly.GetCallingAssembly() };
-
-            services.AddSingleton<IMoMediatoR>(sp => new MoMediatoR(sp, _compiledHandlerDelegates, _compiledNotificationDelegates, _handlerTypeRegistry));
+            
+            services.AddSingleton<IMoMediatoR>(sp => {
+                var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+                return new MoMediatoR(sp, _compiledHandlerDelegates, _compiledNotificationDelegates, _handlerTypeRegistry, scopeFactory);
+            });
 
             foreach (var assembly in assemblies)
             {
@@ -68,7 +71,7 @@
                         {
                             var updatedList = new List<(Type, Func<object, INotification, CancellationToken, Task>)>(existingList)
                             {
-            (handler, compiledDelegate)
+                                (handler, compiledDelegate)
                             };
                             return updatedList;
                         });
