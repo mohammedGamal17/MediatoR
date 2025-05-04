@@ -15,6 +15,9 @@
         private readonly ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task> Delegate)>> _notificationInvokers;
         private readonly ConcurrentDictionary<Type, Type> _handlerTypes;
 
+        private readonly ConcurrentDictionary<Type, Func<IServiceProvider, object, CancellationToken, Task<object>>> _pipelineExecutors;
+        private readonly MoMediatoROptions _options;
+
         #endregion
 
         #region Constructors
@@ -28,15 +31,19 @@
         public MoMediatoR(
             IServiceProvider serviceProvider,
             ConcurrentDictionary<Type, Func<object, object, Task<object>>> handlerInvokers,
-            ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task> Delegate)>> notificationInvokers,
+            ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task>)>> notificationInvokers,
             ConcurrentDictionary<Type, Type> handlerTypes,
-            IServiceScopeFactory scopeFactory)
+            IServiceScopeFactory scopeFactory,
+            MoMediatoROptions options,
+            ConcurrentDictionary<Type, Func<IServiceProvider, object, CancellationToken, Task<object>>> pipelineExecutors)
         {
             _serviceProvider = serviceProvider;
             _handlerInvokers = handlerInvokers;
             _notificationInvokers = notificationInvokers;
             _handlerTypes = handlerTypes;
             _scopeFactory = scopeFactory;
+            _options = options;
+            _pipelineExecutors = pipelineExecutors;
         }
         #endregion
 
@@ -54,24 +61,14 @@
         {
             var requestType = request.GetType();
 
-            if (!_handlerInvokers.TryGetValue(requestType, out var invoker))
-                throw new InvalidOperationException($"No handler registered for request type {requestType.FullName}");
-
-            if (!_handlerTypes.TryGetValue(requestType, out var handlerType))
-                throw new InvalidOperationException($"No handler implementation found for {requestType.FullName}");
-
-            using var scope = _scopeFactory.CreateScope();
-            var scopedHandler = scope.ServiceProvider.GetRequiredService(handlerType);
-
-            try
+            if (!_pipelineExecutors.TryGetValue(requestType, out var executor))
             {
-                var result = await invoker(scopedHandler, request);
-                return (TResponse)result!;
+                executor = BuildPipelineExecutor<TResponse>(requestType);
+                _pipelineExecutors.TryAdd(requestType, executor);
             }
-            catch (Exception ex)
-            {
-                throw new ApplicationException($"Failed to execute request handler for {requestType.Name}", ex);
-            }
+
+            var result = await executor(_serviceProvider, request, cancellationToken);
+            return (TResponse)result!;
         }
 
         /// <summary>
@@ -108,7 +105,62 @@
         #endregion
 
         #region Private
+        private Func<IServiceProvider, object, CancellationToken, Task<object>> BuildPipelineExecutor<TResponse>(Type requestType)
+        {
+            if (!_handlerTypes.TryGetValue(requestType, out var handlerType))
+                throw new InvalidOperationException($"No handler for {requestType.Name}");
 
+            if (!_handlerInvokers.TryGetValue(requestType, out var handlerInvoker))
+                throw new InvalidOperationException($"No compiled delegate for {requestType.Name}");
+
+            var method = typeof(MoMediatoR)
+                .GetMethod(nameof(BuildPipelineExecutorGeneric), BindingFlags.NonPublic | BindingFlags.Instance)!
+                .MakeGenericMethod(requestType, typeof(TResponse));
+
+            return (Func<IServiceProvider, object, CancellationToken, Task<object>>)method.Invoke(this, new object[] { handlerType, handlerInvoker })!;
+        }
+        private async Task<TResponse> ExecuteBehaviorPipeline<TRequest, TResponse>(IList<IPipelineBehavior<TRequest, TResponse>> behaviors, TRequest request, CancellationToken token, RequestHandlerDelegate<TResponse> finalHandler)
+            where TRequest : IRequest<TResponse>
+        {
+            RequestHandlerDelegate<TResponse> current = finalHandler;
+
+            for (int i = behaviors.Count - 1; i >= 0; i--)
+            {
+                var behavior = behaviors[i];
+                var next = current;
+                current = () => behavior.Handle(request, () => next(), token);
+            }
+            return await current();
+        }     
+        private Func<IServiceProvider, object, CancellationToken, Task<object>> BuildPipelineExecutorGeneric<TRequest, TResponse>(Type handlerType, Func<object, object, Task<object>> handlerInvoker)
+            where TRequest : IRequest<TResponse>
+        {
+            return (sp, requestObj, token) =>
+            {
+                var scope = sp.CreateScope();
+                var scopedProvider = scope.ServiceProvider;
+                var handler = scopedProvider.GetRequiredService(handlerType);
+                var request = (TRequest)requestObj;
+
+                RequestHandlerDelegate<TResponse> handlerDelegate = () => handlerInvoker(handler, request)
+                    .ContinueWith(t => (TResponse)t.Result!, token);
+
+                var pipelineTypes = _options.GlobalPipelineBehaviors
+                    .Select(t => t.IsGenericTypeDefinition ? t.MakeGenericType(typeof(TRequest), typeof(TResponse)) : t)
+                    .ToList();
+
+                var behaviors = pipelineTypes
+                    .Select(bt => (IPipelineBehavior<TRequest, TResponse>)scopedProvider.GetRequiredService(bt))
+                    .ToList();
+
+                Func<Task<TResponse>> pipeline = () =>
+                {
+                    return ExecuteBehaviorPipeline(behaviors, request, token, handlerDelegate);
+                };
+
+                return pipeline().ContinueWith(t => (object)t.Result!, token);
+            };
+        }
         #endregion
 
         #endregion

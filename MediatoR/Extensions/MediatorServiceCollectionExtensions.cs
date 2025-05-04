@@ -10,11 +10,18 @@
         private static readonly ConcurrentDictionary<Type, Func<object, object, Task<object>>> _compiledHandlerDelegates = new();
         private static readonly ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task> Delegate)>> _compiledNotificationDelegates = new();
         private static readonly ConcurrentDictionary<Type, Type> _handlerTypeRegistry = new();
+        private static readonly ConcurrentDictionary<Type, Func<IServiceProvider, object, CancellationToken, Task<object>>> _pipelineExecutors = new();
         #endregion
 
         #region Methods
 
         #region Public
+
+        public static IServiceCollection AddMoMediatoR(this IServiceCollection services, params Assembly[] assemblies)
+        {
+            return AddMoMediatoR(services, _ => { }, assemblies);
+        }
+
         /// <summary>
         /// Registers all request and notification handlers from the specified assemblies,
         /// as well as the Mediator service itself.
@@ -22,15 +29,25 @@
         /// <param name="services">The <see cref="IServiceCollection"/> to register services into.</param>
         /// <param name="assemblies">The assemblies to scan for request and notification handlers. If no assemblies are provided, the calling assembly is used.</param>
         /// <returns>The updated <see cref="IServiceCollection"/>.</returns>
-        public static IServiceCollection AddMoMediatoR(this IServiceCollection services, params Assembly[] assemblies)
+
+        public static IServiceCollection AddMoMediatoR(this IServiceCollection services, Action<MoMediatoROptions> configure, params Assembly[] assemblies)
         {
             if (assemblies == null || assemblies.Length == 0)
                 assemblies = new[] { Assembly.GetCallingAssembly() };
-            
-            services.AddSingleton<IMoMediatoR>(sp => {
+
+            var options = new MoMediatoROptions();
+            configure?.Invoke(options);
+
+            services.AddSingleton<IMoMediatoR>(sp =>
+            {
                 var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-                return new MoMediatoR(sp, _compiledHandlerDelegates, _compiledNotificationDelegates, _handlerTypeRegistry, scopeFactory);
+                return new MoMediatoR(sp, _compiledHandlerDelegates, _compiledNotificationDelegates, _handlerTypeRegistry, scopeFactory, options, _pipelineExecutors);
             });
+
+            foreach (var behavior in options.GlobalPipelineBehaviors)
+            {
+                services.AddTransient(behavior);
+            }
 
             foreach (var assembly in assemblies)
             {
@@ -76,7 +93,6 @@
                             return updatedList;
                         });
 
-
                     services.AddTransient(handler);
                 }
             }
@@ -111,23 +127,18 @@
         private static Func<object, object, Task<object>> CompileRequestHandler(Type handlerType, Type requestType, Type responseType)
         {
             var method = typeof(IRequestHandler<,>).MakeGenericType(requestType, responseType).GetMethod("Handle")
-             ?? throw new InvalidOperationException("Could not find Handle method.");
+                         ?? throw new InvalidOperationException("Could not find Handle method.");
 
-            // parameters: (object handler, object request)
             var handler = Expression.Parameter(typeof(object), "handler");
             var request = Expression.Parameter(typeof(object), "request");
 
-            // cast handler and request to proper types
             var castHandler = Expression.Convert(handler, handlerType);
             var castRequest = Expression.Convert(request, requestType);
 
-            // CancellationToken.None
             var cancellation = Expression.Constant(CancellationToken.None);
 
-            // call Handle method
             var call = Expression.Call(castHandler, method, castRequest, cancellation);
 
-            // convert Task<T> to Task<object> using helper
             var convertCall = Expression.Call(
                 typeof(TaskExtensions),
                 nameof(TaskExtensions.ConvertTaskResult),
@@ -135,7 +146,6 @@
                 call
             );
 
-            // compile expression
             var lambda = Expression.Lambda<Func<object, object, Task<object>>>(
                 convertCall,
                 handler,
@@ -156,7 +166,7 @@
         private static Func<object, INotification, CancellationToken, Task> CompileNotificationHandler(Type handlerType, Type notificationType)
         {
             var method = typeof(INotificationHandler<>).MakeGenericType(notificationType).GetMethod("Handle")
-                                     ?? throw new InvalidOperationException("Could not find Handle method.");
+                         ?? throw new InvalidOperationException("Could not find Handle method.");
 
             var handler = Expression.Parameter(typeof(object), "handler");
             var notification = Expression.Parameter(typeof(INotification), "notification");
