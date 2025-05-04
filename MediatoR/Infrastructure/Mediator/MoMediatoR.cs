@@ -30,11 +30,11 @@
         /// <param name="handlerTypes">A dictionary that maps request types to their corresponding handler types.</param>
         public MoMediatoR(
             IServiceProvider serviceProvider,
+            IServiceScopeFactory scopeFactory,
+            MoMediatoROptions options,
             ConcurrentDictionary<Type, Func<object, object, Task<object>>> handlerInvokers,
             ConcurrentDictionary<Type, List<(Type HandlerType, Func<object, INotification, CancellationToken, Task>)>> notificationInvokers,
             ConcurrentDictionary<Type, Type> handlerTypes,
-            IServiceScopeFactory scopeFactory,
-            MoMediatoROptions options,
             ConcurrentDictionary<Type, Func<IServiceProvider, object, CancellationToken, Task<object>>> pipelineExecutors)
         {
             _serviceProvider = serviceProvider;

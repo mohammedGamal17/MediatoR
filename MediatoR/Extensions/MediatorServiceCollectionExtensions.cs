@@ -41,7 +41,7 @@
             services.AddSingleton<IMoMediatoR>(sp =>
             {
                 var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
-                return new MoMediatoR(sp, _compiledHandlerDelegates, _compiledNotificationDelegates, _handlerTypeRegistry, scopeFactory, options, _pipelineExecutors);
+                return new MoMediatoR(sp, scopeFactory, options, _compiledHandlerDelegates, _compiledNotificationDelegates, _handlerTypeRegistry, _pipelineExecutors);
             });
 
             foreach (var behavior in options.GlobalPipelineBehaviors)
